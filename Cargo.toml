@@ -1,0 +1,15 @@
+[dependencies]
+mpi = '0.5.4'
+mpi-sys = '0.1.2'
+num-traits = '0.2.6'
+rand = '0.6.5'
+rayon = '1.0.3'
+
+[dependencies.scorus]
+path = '../scorus'
+
+[package]
+authors = ['Gu Junhua <jhgu@nao.cas.cn>']
+edition = '2018'
+name = 'mpi_pso'
+version = '0.1.0'
