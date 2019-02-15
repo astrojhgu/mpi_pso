@@ -2,7 +2,6 @@
 
 use std::ops::{Add, IndexMut, Mul, Sub};
 
-
 use mpi::collective::CommunicatorCollectives;
 use mpi::collective::Root;
 use mpi::datatype::BufferMut;
@@ -10,19 +9,18 @@ use mpi::datatype::Equivalence;
 use mpi::topology::Rank;
 use mpi_sys::MPI_Comm;
 
-
-use scorus::linear_space::LinearSpace;
 use num_traits::cast::NumCast;
 use num_traits::float::Float;
 use num_traits::identities::{one, zero};
 use rand::distributions::uniform::SampleUniform;
 use rand::Rng;
+use scorus::linear_space::LinearSpace;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
 pub struct Particle<V, T>
-    where
-        T: Float
+where
+    T: Float
         + NumCast
         + std::cmp::PartialOrd
         + Copy
@@ -32,10 +30,10 @@ pub struct Particle<V, T>
         + Equivalence
         + Send
         + Sync,
-        V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync,
-        for<'b> &'b V: Add<Output = V>,
-        for<'b> &'b V: Sub<Output = V>,
-        for<'b> &'b V: Mul<T, Output = V>,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync,
+    for<'b> &'b V: Add<Output = V>,
+    for<'b> &'b V: Sub<Output = V>,
+    for<'b> &'b V: Mul<T, Output = V>,
 {
     pub position: V,
     pub velocity: V,
@@ -43,7 +41,7 @@ pub struct Particle<V, T>
     pub pbest: Option<Box<Particle<V, T>>>,
 }
 
-fn calc_task_per_node(ntasks:usize, nnodes:usize)->usize{
+fn calc_task_per_node(ntasks: usize, nnodes: usize) -> usize {
     let x = ntasks / nnodes;
     if x * nnodes >= ntasks {
         x
@@ -52,11 +50,9 @@ fn calc_task_per_node(ntasks:usize, nnodes:usize)->usize{
     }
 }
 
-
-
 pub struct ParticleSwarmMaximizer<'a, V, T>
-    where
-        T: Float
+where
+    T: Float
         + NumCast
         + std::cmp::PartialOrd
         + Copy
@@ -66,10 +62,10 @@ pub struct ParticleSwarmMaximizer<'a, V, T>
         + Equivalence
         + Send
         + Sync,
-        V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
-        for<'b> &'b V: Add<Output = V>,
-        for<'b> &'b V: Sub<Output = V>,
-        for<'b> &'b V: Mul<T, Output = V>,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
+    for<'b> &'b V: Add<Output = V>,
+    for<'b> &'b V: Sub<Output = V>,
+    for<'b> &'b V: Mul<T, Output = V>,
 {
     pub particle_count: usize,
     pub ndim: usize,
@@ -79,8 +75,8 @@ pub struct ParticleSwarmMaximizer<'a, V, T>
 }
 
 impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
-    where
-        T: Float
+where
+    T: Float
         + NumCast
         + std::cmp::PartialOrd
         + Copy
@@ -90,11 +86,11 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         + Debug
         + Send
         + Sync,
-        V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
-        for<'b> &'b V: Add<Output = V>,
-        for<'b> &'b V: Sub<Output = V>,
-        for<'b> &'b V: Mul<T, Output = V>,
-        [T]: BufferMut,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
+    for<'b> &'b V: Add<Output = V>,
+    for<'b> &'b V: Sub<Output = V>,
+    for<'b> &'b V: Mul<T, Output = V>,
+    [T]: BufferMut,
 {
     pub fn new<R, C>(
         func: &'a (Fn(&V) -> T + Sync + Send),
@@ -105,9 +101,9 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         rng: &mut R,
         comm: &C,
     ) -> ParticleSwarmMaximizer<'a, V, T>
-        where
-            R: Rng,
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    where
+        R: Rng,
+        C: CommunicatorCollectives<Raw = MPI_Comm>,
     {
         let swarm = Self::init_swarm(&func, lower, upper, particle_count, rng, comm);
         let ndim = lower.dimension();
@@ -129,10 +125,16 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         }
     }
 
-    pub fn restart<R, C>(&mut self, lower: &V, upper: &V, particle_count: usize, rng: &mut R, comm: &C)
-        where
-            R: Rng,
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    pub fn restart<R, C>(
+        &mut self,
+        lower: &V,
+        upper: &V,
+        particle_count: usize,
+        rng: &mut R,
+        comm: &C,
+    ) where
+        R: Rng,
+        C: CommunicatorCollectives<Raw = MPI_Comm>,
     {
         self.swarm = Self::init_swarm(&self.func, lower, upper, particle_count, rng, comm);
     }
@@ -143,41 +145,41 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         upper: &V,
         pc: usize,
         rng: &mut R,
-        comm: &C
+        comm: &C,
     ) -> Vec<Particle<V, T>>
-        where
-            R: Rng,
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    where
+        R: Rng,
+        C: CommunicatorCollectives<Raw = MPI_Comm>,
     {
         let rank = comm.rank();
-        let ntasks_per_node=calc_task_per_node(pc, comm.size() as usize);
+        let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
         let mut result = Vec::<Particle<V, T>>::new();
         let ndim = lower.dimension();
 
-        let mut ps=Vec::new();
-        
-        for _i in 0..pc{
+        let mut ps = Vec::new();
+
+        for _i in 0..pc {
             let mut p = lower * T::zero();
             for j in 0..ndim {
                 p[j] = rng.gen_range(lower[j], upper[j]);
             }
             ps.push(p);
         }
-        let root=comm.process_at_rank(0 as Rank);
-        for i in &mut ps{
+        let root = comm.process_at_rank(0 as Rank);
+        for i in &mut ps {
             root.broadcast_into(AsMut::<[T]>::as_mut(i));
         }
 
-        let mut fs=vec![zero(); pc];
+        let mut fs = vec![zero(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
-            if k>pc{
+            if k > pc {
                 break;
             }
-            fs[k]=func(&ps[k]);
+            fs[k] = func(&ps[k]);
         }
-        
-        for (k, f) in fs.iter_mut().enumerate().take(pc){
+
+        for (k, f) in fs.iter_mut().enumerate().take(pc) {
             let temp_root_id = (k / ntasks_per_node) as Rank;
             let temp_root = comm.process_at_rank(temp_root_id);
             temp_root.broadcast_into(f);
@@ -200,27 +202,28 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         result
     }
 
-    pub fn update_fitness<C>(&mut self, comm:&C)
-    where C: CommunicatorCollectives<Raw = MPI_Comm>,
-     {
+    pub fn update_fitness<C>(&mut self, comm: &C)
+    where
+        C: CommunicatorCollectives<Raw = MPI_Comm>,
+    {
         /*let f: Vec<T> = self
             .swarm
             .iter()
             .map(|p| (self.func)(&p.position))
             .collect();*/
         let rank = comm.rank();
-        let pc=self.swarm.len();
-        let ntasks_per_node=calc_task_per_node(pc, comm.size() as usize);
-        let mut fs=vec![zero::<T>(); pc];
+        let pc = self.swarm.len();
+        let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
+        let mut fs = vec![zero::<T>(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
-            if k>pc{
+            if k > pc {
                 break;
             }
-            fs[k]=(self.func)(&self.swarm[k].position);
+            fs[k] = (self.func)(&self.swarm[k].position);
         }
-        
-        for k in 0..pc{
+
+        for k in 0..pc {
             let temp_root_id = (k / ntasks_per_node) as Rank;
             let temp_root = comm.process_at_rank(temp_root_id);
             temp_root.broadcast_into(&mut fs[k]);
@@ -231,10 +234,10 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
         });
     }
 
-    pub fn sample<R, C>(&mut self, rng: &mut R, c1: T, c2: T, comm:&C)
-        where
-            R: Rng,
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    pub fn sample<R, C>(&mut self, rng: &mut R, c1: T, c2: T, comm: &C)
+    where
+        R: Rng,
+        C: CommunicatorCollectives<Raw = MPI_Comm>,
     {
         for p in &mut self.swarm {
             match self.gbest {
@@ -275,27 +278,22 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
             }
         }
 
-        let mut rn=Vec::new();
-        for _ in 0..3*self.ndim*self.swarm.len(){
+        let mut rn = Vec::new();
+        for _ in 0..3 * self.ndim * self.swarm.len() {
             rn.push(rng.gen_range(zero::<T>(), one::<T>()));
         }
 
-        let root=comm.process_at_rank(0 as Rank);
+        let root = comm.process_at_rank(0 as Rank);
         root.broadcast_into(&mut rn[..]);
 
         for p in &mut self.swarm {
             if let Some(ref pbest) = p.pbest {
                 if let Some(ref gbest) = self.gbest {
                     for j in 0..self.ndim {
-                        let w = (one::<T>() + rn.pop().unwrap())
-                            / (one::<T>() + one::<T>());
+                        let w = (one::<T>() + rn.pop().unwrap()) / (one::<T>() + one::<T>());
                         let part_vel = w * p.velocity[j];
-                        let cog_vel = c1
-                            * rn.pop().unwrap()
-                            * (pbest.position[j] - p.position[j]);
-                        let soc_vel = c2
-                            * rn.pop().unwrap()
-                            * (gbest.position[j] - p.position[j]);
+                        let cog_vel = c1 * rn.pop().unwrap() * (pbest.position[j] - p.position[j]);
+                        let soc_vel = c2 * rn.pop().unwrap() * (gbest.position[j] - p.position[j]);
                         p.velocity[j] = part_vel + cog_vel + soc_vel;
                         p.position[j] = p.position[j] + p.velocity[j]
                     }
