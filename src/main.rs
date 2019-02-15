@@ -12,9 +12,9 @@ fn main(){
     let mut rng = rand::thread_rng();
     let rank=world.rank();
 
-    let mut pso=mpi_pso::ParticleSwarmMaximizer::new(&foo, &LsVec(vec![-100.0, -100.0]), &LsVec(vec![100.0, 100.0]), None, 20, &mut rng, &world);
+    let mut pso=mpi_pso::ParticleSwarmMaximizer::new(&foo, &LsVec(vec![-100.0;10]), &LsVec(vec![100.0;10]), None, 20, &mut rng, &world);
 
-    while !pso.converged(0.7, 1e-9, 1e-9) {
+    while !pso.converged(0.7, 1e-11, 1e-11) {
         if rank==0 {
             if let Some(ref gbest) = pso.gbest {
                 eprintln!("\n{:?} {}", gbest.position, gbest.fitness);
