@@ -27,10 +27,8 @@ where
         + Default
         + SampleUniform
         + Debug
-        + Equivalence
-        + Send
-        + Sync,
-    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync,
+        + Equivalence,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug ,
     for<'b> &'b V: Add<Output = V>,
     for<'b> &'b V: Sub<Output = V>,
     for<'b> &'b V: Mul<T, Output = V>,
@@ -59,10 +57,8 @@ where
         + Default
         + SampleUniform
         + Debug
-        + Equivalence
-        + Send
-        + Sync,
-    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
+        + Equivalence,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + AsMut<[T]>,
     for<'b> &'b V: Add<Output = V>,
     for<'b> &'b V: Sub<Output = V>,
     for<'b> &'b V: Mul<T, Output = V>,
@@ -71,7 +67,7 @@ where
     pub ndim: usize,
     pub swarm: Vec<Particle<V, T>>,
     pub gbest: Option<Particle<V, T>>,
-    pub func: &'a (Fn(&V) -> T + Send + Sync),
+    pub func: &'a (Fn(&V) -> T ),
 }
 
 impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
@@ -83,17 +79,15 @@ where
         + Default
         + SampleUniform
         + Equivalence
-        + Debug
-        + Send
-        + Sync,
-    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + Send + Sync + AsMut<[T]>,
+        + Debug,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug + AsMut<[T]>,
     for<'b> &'b V: Add<Output = V>,
     for<'b> &'b V: Sub<Output = V>,
     for<'b> &'b V: Mul<T, Output = V>,
     [T]: BufferMut,
 {
     pub fn new<R, C>(
-        func: &'a (Fn(&V) -> T + Sync + Send),
+        func: &'a (Fn(&V) -> T),
         lower: &V,
         upper: &V,
         guess: Option<V>,
@@ -124,6 +118,38 @@ where
             func,
         }
     }
+
+    pub fn from_ensemble<C>(
+        func: &'a (Fn(&V) -> T ),
+        ensemble:Vec<V>,
+        guess: Option<V>,
+        comm: &C,
+    ) -> ParticleSwarmMaximizer<'a, V, T>
+        where
+            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    {
+        let particle_count=ensemble.len();
+        let ndim=ensemble[0].dimension();
+        let v=&ensemble[0]*T::zero();
+        let swarm = Self::init_swarm_from_ensemble(&func, ensemble, comm);
+        let gbest = guess.map(|p| {
+            let f = func(&p);
+            Particle {
+                position: p,
+                velocity: v.clone(),
+                fitness: f,
+                pbest: None,
+            }
+        });
+        ParticleSwarmMaximizer {
+            particle_count,
+            ndim,
+            swarm,
+            gbest,
+            func,
+        }
+    }
+
 
     pub fn restart<R, C>(
         &mut self,
@@ -201,6 +227,53 @@ where
         }
         result
     }
+
+    pub fn init_swarm_from_ensemble<C>(
+        func: &Fn(&V) -> T,
+        ensemble:Vec<V>,
+        comm:&C,
+    ) -> Vec<Particle<V, T>>
+        where
+            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    {
+        let rank = comm.rank();
+        let pc=ensemble.len();
+        let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
+        let mut result = Vec::<Particle<V, T>>::new();
+        let ndim=ensemble[0].dimension();
+
+        let mut fs = vec![zero(); pc];
+
+        for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
+            if k > pc {
+                break;
+            }
+            fs[k] = func(&ensemble[k]);
+        }
+
+        for (k, f) in fs.iter_mut().enumerate().take(pc) {
+            let temp_root_id = (k / ntasks_per_node) as Rank;
+            let temp_root = comm.process_at_rank(temp_root_id);
+            temp_root.broadcast_into(f);
+        }
+
+        for (i, p) in ensemble.into_iter().enumerate() {
+            //let mut p = lower * T::zero();
+            let mut v = &p * T::zero();
+            for j in 0..ndim {
+                v[j] = zero::<T>();
+            }
+            let f = fs[i];
+            result.push(Particle {
+                position: p,
+                velocity: v,
+                fitness: f,
+                pbest: None,
+            });
+        }
+        result
+    }
+
 
     pub fn update_fitness<C>(&mut self, comm: &C)
     where
