@@ -245,7 +245,7 @@ where
         let mut fs = vec![zero(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
-            if k > pc {
+            if k >= pc {
                 break;
             }
             fs[k] = func(&ensemble[k]);
@@ -290,7 +290,7 @@ where
         let mut fs = vec![zero::<T>(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
-            if k > pc {
+            if k >= pc {
                 break;
             }
             fs[k] = (self.func)(&self.swarm[k].position);
