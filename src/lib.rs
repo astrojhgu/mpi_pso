@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)]
+
 use std::ops::{Add, IndexMut, Mul, Sub};
 
 
@@ -175,10 +177,10 @@ impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
             fs[k]=func(&ps[k]);
         }
         
-        for k in 0..pc{
+        for (k, f) in fs.iter_mut().enumerate().take(pc){
             let temp_root_id = (k / ntasks_per_node) as Rank;
             let temp_root = comm.process_at_rank(temp_root_id);
-            temp_root.broadcast_into(&mut fs[k]);
+            temp_root.broadcast_into(f);
         }
 
         for (i, p) in ps.into_iter().enumerate() {
