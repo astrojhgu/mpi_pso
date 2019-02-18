@@ -21,7 +21,7 @@ fn main() {
         &LsVec(vec![-100.0; 20]),
         &LsVec(vec![100.0; 20]),
         None,
-        50,
+        168,
         &mut rng,
         &world,
     );
