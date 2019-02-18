@@ -335,16 +335,13 @@ where
                 pbest: None,
             });
         }
-        /*
+        
 
         for p in result.iter(){
             assert!(same_scalar(p.fitness, comm));
             assert!(same_vec(&(p.velocity), comm));
             assert!(same_vec(&(p.position), comm));
         }
-        */
-
-
         result
     }
 
