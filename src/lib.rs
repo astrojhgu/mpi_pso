@@ -294,12 +294,14 @@ where
 
     pub fn init_swarm_from_ensemble<C>(
         func: &Fn(&V) -> T,
-        ensemble:Vec<V>,
+        mut ensemble:Vec<V>,
         comm:&C,
     ) -> Vec<Particle<V, T>>
         where
             C: CommunicatorCollectives<Raw = MPI_Comm>,
     {
+        broadcast_vec(&mut ensemble[..], comm);
+
         let rank = comm.rank();
         let pc=ensemble.len();
         let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
@@ -333,6 +335,16 @@ where
                 pbest: None,
             });
         }
+        /*
+
+        for p in result.iter(){
+            assert!(same_scalar(p.fitness, comm));
+            assert!(same_vec(&(p.velocity), comm));
+            assert!(same_vec(&(p.position), comm));
+        }
+        */
+
+
         result
     }
 
@@ -435,12 +447,14 @@ where
         }
 
         self.update_fitness(comm);
+
         /*
         for p in self.swarm.iter(){
             assert!(same_vec(&(p.position), comm));
             assert!(same_vec(&(p.velocity), comm));
             assert!(same_scalar(p.fitness, comm));
-        }*/
+        }
+        */
     }
 
     pub fn converged(&self, p: T, m1: T, m2: T) -> bool {
