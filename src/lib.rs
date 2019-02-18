@@ -1,5 +1,5 @@
 #![allow(clippy::needless_range_loop)]
-
+#![allow(dead_code)]
 use std::ops::{Add, IndexMut, Mul, Sub};
 
 use mpi::collective::CommunicatorCollectives;
@@ -435,11 +435,12 @@ where
         }
 
         self.update_fitness(comm);
+        /*
         for p in self.swarm.iter(){
             assert!(same_vec(&(p.position), comm));
             assert!(same_vec(&(p.velocity), comm));
             assert!(same_scalar(p.fitness, comm));
-        }
+        }*/
     }
 
     pub fn converged(&self, p: T, m1: T, m2: T) -> bool {
