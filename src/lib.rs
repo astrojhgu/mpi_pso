@@ -48,6 +48,75 @@ fn calc_task_per_node(ntasks: usize, nnodes: usize) -> usize {
     }
 }
 
+fn broadcast_vec<T, V,C>(data:&mut [V], comm:&C)
+    where
+        C:CommunicatorCollectives<Raw = MPI_Comm>,
+        V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]>,
+        T: Float
+        + NumCast
+        + std::cmp::PartialOrd
+        + Copy
+        + Default
+        + SampleUniform
+        + Debug
+        + Equivalence,
+
+{
+    let root = comm.process_at_rank(0 as Rank);
+    for i in data {
+        root.broadcast_into(AsMut::<[T]>::as_mut(i));
+    }
+}
+
+fn same_vec<T, V,C>(data:&V, comm:&C)->bool
+    where
+        C:CommunicatorCollectives<Raw = MPI_Comm>,
+        V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]> + LinearSpace<T>,
+        T: Float
+        + NumCast
+        + std::cmp::PartialOrd
+        + Copy
+        + Default
+        + SampleUniform
+        + Debug
+        + Equivalence,
+        for<'b> &'b V: Add<Output = V>,
+        for<'b> &'b V: Sub<Output = V>,
+        for<'b> &'b V: Mul<T, Output = V>,
+
+{
+    let mut v1=vec![zero::<T>(); data.dimension()];
+    for i in 0..data.dimension(){
+        v1[i]=data[i];
+    }
+    let mut v_max=vec![zero::<T>(); data.dimension()];
+    let mut v_min=vec![zero::<T>(); data.dimension()];
+    comm.all_reduce_into(&v1[..], &mut v_max[..], mpi::collective::SystemOperation::max());
+    comm.all_reduce_into(&v1[..], &mut v_min[..], mpi::collective::SystemOperation::min());
+    v_max.iter().zip(v_min.iter()).all(|(&a,&b)|a==b)
+}
+
+fn same_scalar<T,C>(data:T, comm:&C)->bool
+where
+    C:CommunicatorCollectives<Raw = MPI_Comm>,
+    T: Float
+    + NumCast
+    + std::cmp::PartialOrd
+    + Copy
+    + Default
+    + SampleUniform
+    + Debug
+    + Equivalence,
+{
+    let mut data_max=zero::<T>();
+    let mut data_min=zero::<T>();
+    comm.all_reduce_into(&data, &mut data_max, mpi::collective::SystemOperation::max());
+    comm.all_reduce_into(&data, &mut data_min, mpi::collective::SystemOperation::min());
+    data_max==data_min
+}
+
+
+
 pub struct ParticleSwarmMaximizer<'a, V, T>
 where
     T: Float
@@ -191,25 +260,20 @@ where
             }
             ps.push(p);
         }
-        let root = comm.process_at_rank(0 as Rank);
-        for i in &mut ps {
-            root.broadcast_into(AsMut::<[T]>::as_mut(i));
-        }
 
-        let mut fs = vec![zero(); pc];
+        broadcast_vec(&mut ps[..], comm);
+
+        let mut fs1 = vec![zero(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
             if k >= pc {
                 break;
             }
-            fs[k] = func(&ps[k]);
+            fs1[k] = func(&ps[k]);
         }
 
-        for (k, f) in fs.iter_mut().enumerate().take(pc) {
-            let temp_root_id = (k / ntasks_per_node) as Rank;
-            let temp_root = comm.process_at_rank(temp_root_id);
-            temp_root.broadcast_into(f);
-        }
+        let mut fs = vec![zero(); pc];
+        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
 
         for (i, p) in ps.into_iter().enumerate() {
             //let mut p = lower * T::zero();
@@ -242,20 +306,18 @@ where
         let mut result = Vec::<Particle<V, T>>::new();
         let ndim=ensemble[0].dimension();
 
-        let mut fs = vec![zero(); pc];
+        let mut fs1 = vec![zero(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
             if k >= pc {
                 break;
             }
-            fs[k] = func(&ensemble[k]);
+            fs1[k] = func(&ensemble[k]);
         }
 
-        for (k, f) in fs.iter_mut().enumerate().take(pc) {
-            let temp_root_id = (k / ntasks_per_node) as Rank;
-            let temp_root = comm.process_at_rank(temp_root_id);
-            temp_root.broadcast_into(f);
-        }
+        let mut fs=vec![zero();pc];
+
+        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
 
         for (i, p) in ensemble.into_iter().enumerate() {
             //let mut p = lower * T::zero();
@@ -287,20 +349,18 @@ where
         let rank = comm.rank();
         let pc = self.swarm.len();
         let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
-        let mut fs = vec![zero::<T>(); pc];
+        let mut fs1 = vec![zero::<T>(); pc];
 
         for k in (rank as usize * ntasks_per_node)..((rank + 1) as usize * ntasks_per_node) {
             if k >= pc {
                 break;
             }
-            fs[k] = (self.func)(&self.swarm[k].position);
+            fs1[k] = (self.func)(&self.swarm[k].position);
         }
 
-        for k in 0..pc {
-            let temp_root_id = (k / ntasks_per_node) as Rank;
-            let temp_root = comm.process_at_rank(temp_root_id);
-            temp_root.broadcast_into(&mut fs[k]);
-        }
+        let mut fs = vec![zero::<T>(); pc];
+
+        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
 
         fs.iter().zip(self.swarm.iter_mut()).for_each(|(&f, p)| {
             p.fitness = f;
@@ -375,6 +435,11 @@ where
         }
 
         self.update_fitness(comm);
+        for p in self.swarm.iter(){
+            assert!(same_vec(&(p.position), comm));
+            assert!(same_vec(&(p.velocity), comm));
+            assert!(same_scalar(p.fitness, comm));
+        }
     }
 
     pub fn converged(&self, p: T, m1: T, m2: T) -> bool {
