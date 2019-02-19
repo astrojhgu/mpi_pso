@@ -4,8 +4,6 @@ use scorus::linear_space::type_wrapper::LsVec;
 use std::fs::File;
 use std::io::Write;
 use std::fs::OpenOptions;
-
-use rand::distributions::uniform::SampleUniform;
 use rand::Rng;
 
 fn foo(x: &LsVec<f64, Vec<f64>>) -> f64 {
@@ -20,7 +18,7 @@ fn main() {
 
     let ensemble:Vec<_>=(0..168).map(|_|{
         let mut result=Vec::new();
-        for i in 0..20{
+        for _i in 0..20{
             result.push(rng.gen_range(0.0, 100.0));
         }
         LsVec(result)
@@ -32,7 +30,7 @@ fn main() {
 
     for _i in 0..10 {
         while !pso.converged(0.7, 1e-11, 1e-11) {
-            pso.sample(&mut rng, 1.193, 1.193, &world);
+            pso.sample(&mut rng, 0.75, 1.0, 1.0, &world);
             if rank == 0 {
                 if let Some(ref gbest) = pso.gbest {
                     eprintln!("\n{:?} {}", gbest.position, gbest.fitness);

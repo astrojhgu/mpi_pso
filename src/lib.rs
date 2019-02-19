@@ -376,7 +376,7 @@ where
         });
     }
 
-    pub fn sample<R, C>(&mut self, rng: &mut R, c1: T, c2: T, comm: &C)
+    pub fn sample<R, C>(&mut self, rng: &mut R, w: T, c1: T, c2: T, comm: &C)
     where
         R: Rng,
         C: CommunicatorCollectives<Raw = MPI_Comm>,
@@ -421,7 +421,7 @@ where
         }
 
         let mut rn = Vec::new();
-        for _ in 0..3 * self.ndim * self.swarm.len() {
+        for _ in 0..2 * self.ndim * self.swarm.len() {
             rn.push(rng.gen_range(zero::<T>(), one::<T>()));
         }
 
@@ -432,7 +432,6 @@ where
             if let Some(ref pbest) = p.pbest {
                 if let Some(ref gbest) = self.gbest {
                     for j in 0..self.ndim {
-                        let w = (one::<T>() + rn.pop().unwrap()) / (one::<T>() + one::<T>());
                         let part_vel = w * p.velocity[j];
                         let cog_vel = c1 * rn.pop().unwrap() * (pbest.position[j] - p.position[j]);
                         let soc_vel = c2 * rn.pop().unwrap() * (gbest.position[j] - p.position[j]);
