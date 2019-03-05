@@ -1,6 +1,6 @@
 [dependencies]
-mpi = '0.5.4'
-mpi-sys = '0.1.2'
+mpi = {git='https://github.com/bsteinb/rsmpi.git'}
+mpi-sys = {git='https://github.com/bsteinb/rsmpi.git'}
 num-traits = '0.2.6'
 rand = '0.6.5'
 rayon = '1.0.3'
