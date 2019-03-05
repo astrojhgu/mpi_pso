@@ -7,7 +7,6 @@ use mpi::collective::Root;
 use mpi::datatype::BufferMut;
 use mpi::datatype::Equivalence;
 use mpi::topology::Rank;
-use mpi_sys::MPI_Comm;
 
 use num_traits::cast::NumCast;
 use num_traits::float::Float;
@@ -28,7 +27,7 @@ where
         + SampleUniform
         + Debug
         + Equivalence,
-    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug ,
+    V: Clone + IndexMut<usize, Output = T> + LinearSpace<T> + Debug,
     for<'b> &'b V: Add<Output = V>,
     for<'b> &'b V: Sub<Output = V>,
     for<'b> &'b V: Mul<T, Output = V>,
@@ -48,11 +47,11 @@ fn calc_task_per_node(ntasks: usize, nnodes: usize) -> usize {
     }
 }
 
-fn broadcast_vec<T, V,C>(data:&mut [V], comm:&C)
-    where
-        C:CommunicatorCollectives<Raw = MPI_Comm>,
-        V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]>,
-        T: Float
+fn broadcast_vec<T, V, C>(data: &mut [V], comm: &C)
+where
+    C: CommunicatorCollectives,
+    V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]>,
+    T: Float
         + NumCast
         + std::cmp::PartialOrd
         + Copy
@@ -60,7 +59,6 @@ fn broadcast_vec<T, V,C>(data:&mut [V], comm:&C)
         + SampleUniform
         + Debug
         + Equivalence,
-
 {
     let root = comm.process_at_rank(0 as Rank);
     for i in data {
@@ -68,11 +66,11 @@ fn broadcast_vec<T, V,C>(data:&mut [V], comm:&C)
     }
 }
 
-fn same_vec<T, V,C>(data:&V, comm:&C)->bool
-    where
-        C:CommunicatorCollectives<Raw = MPI_Comm>,
-        V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]> + LinearSpace<T>,
-        T: Float
+fn same_vec<T, V, C>(data: &V, comm: &C) -> bool
+where
+    C: CommunicatorCollectives,
+    V: Clone + IndexMut<usize, Output = T> + Debug + AsMut<[T]> + LinearSpace<T>,
+    T: Float
         + NumCast
         + std::cmp::PartialOrd
         + Copy
@@ -80,42 +78,55 @@ fn same_vec<T, V,C>(data:&V, comm:&C)->bool
         + SampleUniform
         + Debug
         + Equivalence,
-        for<'b> &'b V: Add<Output = V>,
-        for<'b> &'b V: Sub<Output = V>,
-        for<'b> &'b V: Mul<T, Output = V>,
-
+    for<'b> &'b V: Add<Output = V>,
+    for<'b> &'b V: Sub<Output = V>,
+    for<'b> &'b V: Mul<T, Output = V>,
 {
-    let mut v1=vec![zero::<T>(); data.dimension()];
-    for i in 0..data.dimension(){
-        v1[i]=data[i];
+    let mut v1 = vec![zero::<T>(); data.dimension()];
+    for i in 0..data.dimension() {
+        v1[i] = data[i];
     }
-    let mut v_max=vec![zero::<T>(); data.dimension()];
-    let mut v_min=vec![zero::<T>(); data.dimension()];
-    comm.all_reduce_into(&v1[..], &mut v_max[..], mpi::collective::SystemOperation::max());
-    comm.all_reduce_into(&v1[..], &mut v_min[..], mpi::collective::SystemOperation::min());
-    v_max.iter().zip(v_min.iter()).all(|(&a,&b)|a==b)
+    let mut v_max = vec![zero::<T>(); data.dimension()];
+    let mut v_min = vec![zero::<T>(); data.dimension()];
+    comm.all_reduce_into(
+        &v1[..],
+        &mut v_max[..],
+        mpi::collective::SystemOperation::max(),
+    );
+    comm.all_reduce_into(
+        &v1[..],
+        &mut v_min[..],
+        mpi::collective::SystemOperation::min(),
+    );
+    v_max.iter().zip(v_min.iter()).all(|(&a, &b)| a == b)
 }
 
-fn same_scalar<T,C>(data:T, comm:&C)->bool
+fn same_scalar<T, C>(data: T, comm: &C) -> bool
 where
-    C:CommunicatorCollectives<Raw = MPI_Comm>,
+    C: CommunicatorCollectives,
     T: Float
-    + NumCast
-    + std::cmp::PartialOrd
-    + Copy
-    + Default
-    + SampleUniform
-    + Debug
-    + Equivalence,
+        + NumCast
+        + std::cmp::PartialOrd
+        + Copy
+        + Default
+        + SampleUniform
+        + Debug
+        + Equivalence,
 {
-    let mut data_max=zero::<T>();
-    let mut data_min=zero::<T>();
-    comm.all_reduce_into(&data, &mut data_max, mpi::collective::SystemOperation::max());
-    comm.all_reduce_into(&data, &mut data_min, mpi::collective::SystemOperation::min());
-    data_max==data_min
+    let mut data_max = zero::<T>();
+    let mut data_min = zero::<T>();
+    comm.all_reduce_into(
+        &data,
+        &mut data_max,
+        mpi::collective::SystemOperation::max(),
+    );
+    comm.all_reduce_into(
+        &data,
+        &mut data_min,
+        mpi::collective::SystemOperation::min(),
+    );
+    data_max == data_min
 }
-
-
 
 pub struct ParticleSwarmMaximizer<'a, V, T>
 where
@@ -136,7 +147,7 @@ where
     pub ndim: usize,
     pub swarm: Vec<Particle<V, T>>,
     pub gbest: Option<Particle<V, T>>,
-    pub func: &'a (Fn(&V) -> T ),
+    pub func: &'a (Fn(&V) -> T),
 }
 
 impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
@@ -166,7 +177,7 @@ where
     ) -> ParticleSwarmMaximizer<'a, V, T>
     where
         R: Rng,
-        C: CommunicatorCollectives<Raw = MPI_Comm>,
+        C: CommunicatorCollectives,
     {
         let swarm = Self::init_swarm(&func, lower, upper, particle_count, rng, comm);
         let ndim = lower.dimension();
@@ -189,17 +200,17 @@ where
     }
 
     pub fn from_ensemble<C>(
-        func: &'a (Fn(&V) -> T ),
-        ensemble:Vec<V>,
+        func: &'a (Fn(&V) -> T),
+        ensemble: Vec<V>,
         guess: Option<V>,
         comm: &C,
     ) -> ParticleSwarmMaximizer<'a, V, T>
-        where
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    where
+        C: CommunicatorCollectives,
     {
-        let particle_count=ensemble.len();
-        let ndim=ensemble[0].dimension();
-        let v=&ensemble[0]*T::zero();
+        let particle_count = ensemble.len();
+        let ndim = ensemble[0].dimension();
+        let v = &ensemble[0] * T::zero();
         let swarm = Self::init_swarm_from_ensemble(&func, ensemble, comm);
         let gbest = guess.map(|p| {
             let f = func(&p);
@@ -219,7 +230,6 @@ where
         }
     }
 
-
     pub fn restart<R, C>(
         &mut self,
         lower: &V,
@@ -229,7 +239,7 @@ where
         comm: &C,
     ) where
         R: Rng,
-        C: CommunicatorCollectives<Raw = MPI_Comm>,
+        C: CommunicatorCollectives,
     {
         self.swarm = Self::init_swarm(&self.func, lower, upper, particle_count, rng, comm);
     }
@@ -244,7 +254,7 @@ where
     ) -> Vec<Particle<V, T>>
     where
         R: Rng,
-        C: CommunicatorCollectives<Raw = MPI_Comm>,
+        C: CommunicatorCollectives,
     {
         let rank = comm.rank();
         let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
@@ -273,7 +283,11 @@ where
         }
 
         let mut fs = vec![zero(); pc];
-        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
+        comm.all_reduce_into(
+            &fs1[..],
+            &mut fs[..],
+            mpi::collective::SystemOperation::sum(),
+        );
 
         for (i, p) in ps.into_iter().enumerate() {
             //let mut p = lower * T::zero();
@@ -294,19 +308,19 @@ where
 
     pub fn init_swarm_from_ensemble<C>(
         func: &Fn(&V) -> T,
-        mut ensemble:Vec<V>,
-        comm:&C,
+        mut ensemble: Vec<V>,
+        comm: &C,
     ) -> Vec<Particle<V, T>>
-        where
-            C: CommunicatorCollectives<Raw = MPI_Comm>,
+    where
+        C: CommunicatorCollectives,
     {
         broadcast_vec(&mut ensemble[..], comm);
 
         let rank = comm.rank();
-        let pc=ensemble.len();
+        let pc = ensemble.len();
         let ntasks_per_node = calc_task_per_node(pc, comm.size() as usize);
         let mut result = Vec::<Particle<V, T>>::new();
-        let ndim=ensemble[0].dimension();
+        let ndim = ensemble[0].dimension();
 
         let mut fs1 = vec![zero(); pc];
 
@@ -317,9 +331,13 @@ where
             fs1[k] = func(&ensemble[k]);
         }
 
-        let mut fs=vec![zero();pc];
+        let mut fs = vec![zero(); pc];
 
-        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
+        comm.all_reduce_into(
+            &fs1[..],
+            &mut fs[..],
+            mpi::collective::SystemOperation::sum(),
+        );
 
         for (i, p) in ensemble.into_iter().enumerate() {
             //let mut p = lower * T::zero();
@@ -335,9 +353,8 @@ where
                 pbest: None,
             });
         }
-        
 
-        for p in result.iter(){
+        for p in result.iter() {
             assert!(same_scalar(p.fitness, comm));
             assert!(same_vec(&(p.velocity), comm));
             assert!(same_vec(&(p.position), comm));
@@ -345,10 +362,9 @@ where
         result
     }
 
-
     pub fn update_fitness<C>(&mut self, comm: &C)
     where
-        C: CommunicatorCollectives<Raw = MPI_Comm>,
+        C: CommunicatorCollectives,
     {
         /*let f: Vec<T> = self
             .swarm
@@ -369,7 +385,11 @@ where
 
         let mut fs = vec![zero::<T>(); pc];
 
-        comm.all_reduce_into(&fs1[..], &mut fs[..], mpi::collective::SystemOperation::sum());
+        comm.all_reduce_into(
+            &fs1[..],
+            &mut fs[..],
+            mpi::collective::SystemOperation::sum(),
+        );
 
         fs.iter().zip(self.swarm.iter_mut()).for_each(|(&f, p)| {
             p.fitness = f;
@@ -379,7 +399,7 @@ where
     pub fn sample<R, C>(&mut self, rng: &mut R, w: T, c1: T, c2: T, comm: &C)
     where
         R: Rng,
-        C: CommunicatorCollectives<Raw = MPI_Comm>,
+        C: CommunicatorCollectives,
     {
         for p in &mut self.swarm {
             match self.gbest {

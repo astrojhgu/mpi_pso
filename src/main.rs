@@ -1,10 +1,10 @@
 use mpi::topology::Communicator;
 use scorus::linear_space::type_wrapper::LsVec;
 
-use std::fs::File;
-use std::io::Write;
-use std::fs::OpenOptions;
 use rand::Rng;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 fn foo(x: &LsVec<f64, Vec<f64>>) -> f64 {
     x.0.iter().map(|x| -x * x).sum()
@@ -16,17 +16,16 @@ fn main() {
     let mut rng = rand::thread_rng();
     let rank = world.rank();
 
-    let ensemble:Vec<_>=(0..168).map(|_|{
-        let mut result=Vec::new();
-        for _i in 0..20{
-            result.push(rng.gen_range(0.0, 100.0));
-        }
-        LsVec(result)
-    }).collect();
-
+    let ensemble: Vec<_> = (0..168)
+        .map(|_| {
+            let mut result = Vec::new();
+            for _i in 0..20 {
+                result.push(rng.gen_range(0.0, 100.0));
+            }
+            LsVec(result)
+        }).collect();
 
     let mut pso = mpi_pso::ParticleSwarmMaximizer::from_ensemble(&foo, ensemble, None, &world);
-
 
     for _i in 0..10 {
         while !pso.converged(0.7, 1e-11, 1e-11) {
