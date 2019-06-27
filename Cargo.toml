@@ -1,16 +1,15 @@
 [dependencies]
-num-traits = '0.2.6'
-rand = '0.6.5'
-rayon = '1.0.3'
+num-traits = '0.2.8'
+rand = '0.7.0-pre.1'
+rayon = '1.1.0'
 
 [dependencies.mpi]
-git = 'https://github.com/bsteinb/rsmpi.git'
 default-features = false
 features = []
+git = 'https://github.com/bsteinb/rsmpi.git'
 
 [dependencies.mpi-sys]
-git='https://github.com/bsteinb/rsmpi.git'
-
+git = 'https://github.com/bsteinb/rsmpi.git'
 
 [dependencies.scorus]
 path = '../scorus'

@@ -147,7 +147,7 @@ where
     pub ndim: usize,
     pub swarm: Vec<Particle<V, T>>,
     pub gbest: Option<Particle<V, T>>,
-    pub func: &'a (Fn(&V) -> T),
+    pub func: &'a dyn (Fn(&V) -> T),
 }
 
 impl<'a, V, T> ParticleSwarmMaximizer<'a, V, T>
@@ -167,7 +167,7 @@ where
     [T]: BufferMut,
 {
     pub fn new<R, C>(
-        func: &'a (Fn(&V) -> T),
+        func: &'a (dyn Fn(&V) -> T),
         lower: &V,
         upper: &V,
         guess: Option<V>,
@@ -200,7 +200,7 @@ where
     }
 
     pub fn from_ensemble<C>(
-        func: &'a (Fn(&V) -> T),
+        func: &'a (dyn Fn(&V) -> T),
         ensemble: Vec<V>,
         guess: Option<V>,
         comm: &C,
@@ -245,7 +245,7 @@ where
     }
 
     pub fn init_swarm<R, C>(
-        func: &Fn(&V) -> T,
+        func: &dyn Fn(&V) -> T,
         lower: &V,
         upper: &V,
         pc: usize,
@@ -307,7 +307,7 @@ where
     }
 
     pub fn init_swarm_from_ensemble<C>(
-        func: &Fn(&V) -> T,
+        func: &dyn Fn(&V) -> T,
         mut ensemble: Vec<V>,
         comm: &C,
     ) -> Vec<Particle<V, T>>
