@@ -1,7 +1,7 @@
 [dependencies]
 num-traits = '0.2.8'
-rand = '0.7.0-pre.1'
-rayon = '1.1.0'
+rand = '0.7.0'
+rayon = '1.2.0'
 
 [dependencies.mpi]
 default-features = false
