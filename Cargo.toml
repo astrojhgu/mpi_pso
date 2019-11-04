@@ -1,6 +1,6 @@
 [dependencies]
 num-traits = '0.2.8'
-rand = '0.7.0'
+rand = '0.7.2'
 rayon = '1.2.0'
 
 [dependencies.mpi]
